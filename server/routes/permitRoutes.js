@@ -4,6 +4,7 @@ import {
   getPermits,
   getPermitById,
   updatePermitStatus,
+  approveOrRejectPermit,
   agreeJointExcavation,
   downloadPermitPDF,
 } from '../controllers/permitController.js';
@@ -21,6 +22,7 @@ router.route('/:id')
   .get(protect, getPermitById);
 
 router.put('/:id/status', protect, authorize('Department Officer', 'Super Admin'), updatePermitStatusRules, handleValidationErrors, updatePermitStatus);
+router.patch('/:id/status', protect, authorize('Super Admin'), handleValidationErrors, approveOrRejectPermit);
 router.put('/:id/agree-joint', protect, authorize('Department Officer'), agreeJointExcavation);
 router.get('/:id/pdf', protect, downloadPermitPDF);
 

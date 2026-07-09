@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import StatCard from '../components/StatCard';
+import PermitList from '../components/PermitList';
 import { Layers, AlertTriangle, FileText, CheckCircle2, Clock, ShieldAlert, BarChart3, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -168,6 +169,20 @@ const AdminDashboard = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* City-Wide Permits Master Log & Pending Queue */}
+      <div className="glass-panel p-5 rounded-2xl border border-slate-850 space-y-4">
+        <div>
+          <h3 className="font-bold text-sm text-slate-200 flex items-center gap-2">
+            <Layers className="h-4.5 w-4.5 text-gov-400" />
+            City-Wide Excavation Permits & Pending Queue
+          </h3>
+          <p className="text-[10px] text-slate-400 mt-1">
+            Filter by status "Pending" to process requests, or search across all department permits.
+          </p>
+        </div>
+        <PermitList isAdmin={true} />
       </div>
     </div>
   );

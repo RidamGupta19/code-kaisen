@@ -23,9 +23,14 @@ export const createPermit = async (req, res, next) => {
       return next(new AppError('Please specify a department', 400, 'BAD_REQUEST'));
     }
 
-    const { roadName, ward, latitude, longitude, radius, purpose, startDate, endDate, depth, restorationPlan } = req.body;
+    const { roadName, ward, path, radius, purpose, startDate, endDate, depth, restorationPlan } = req.body;
 
     const permitNumber = `PMT-${crypto.randomInt(100000, 999999)}`;
+
+    // Validate path parameter
+    if (!path || !path.coordinates || !Array.isArray(path.coordinates) || path.coordinates.length < 2) {
+      return next(new AppError('GeoJSON path with at least 2 coordinates is required', 400, 'BAD_REQUEST'));
+    }
 
     const permit = await PermitRepository.create({
       permitNumber,
@@ -35,8 +40,9 @@ export const createPermit = async (req, res, next) => {
       ward,
       location: {
         type: 'Point',
-        coordinates: [Number(longitude), Number(latitude)],
+        coordinates: path.coordinates[0], // Start coordinate
       },
+      path,
       radius: Number(radius) || 50,
       purpose,
       startDate: new Date(startDate),
@@ -64,8 +70,8 @@ export const createPermit = async (req, res, next) => {
       req.ip
     );
 
-    // Check for conflicts
-    await detectConflicts(permit._id);
+    // Bypassed for Phase 3: No conflict detection yet
+    // await detectConflicts(permit._id);
 
     // Fetch details
     const updatedPermit = await PermitRepository.findByIdWithDetails(permit._id);
@@ -85,38 +91,78 @@ export const createPermit = async (req, res, next) => {
   }
 };
 
+// Reusable helper for filtering and serializing permits (used for internal and public views)
+export const getFilteredPermits = async (queryParams, isPublic = false) => {
+  const filters = {};
+
+  if (queryParams.ward) filters.ward = queryParams.ward;
+  if (queryParams.department) filters.department = queryParams.department;
+
+  if (isPublic) {
+    // Public safe views only see Approved, Active, or Completed permits
+    filters.status = { $in: ['Approved', 'Active', 'Completed'] };
+  } else if (queryParams.status) {
+    filters.status = queryParams.status;
+  }
+
+  // Date range overlap check: permit is active during the requested window
+  if (queryParams.startDate || queryParams.endDate) {
+    if (queryParams.startDate) {
+      filters.endDate = { $gte: new Date(queryParams.startDate) };
+    }
+    if (queryParams.endDate) {
+      filters.startDate = { $lte: new Date(queryParams.endDate) };
+    }
+  }
+
+  if (queryParams.search) {
+    filters.roadName = { $regex: queryParams.search, $options: 'i' };
+  }
+
+  const sort = queryParams.sort ? queryParams.sort.split(',').join(' ') : '-createdAt';
+
+  const permits = await PermitRepository.findWithDetails(filters, sort);
+
+  if (isPublic) {
+    // Serialize to remove sensitive / internal fields (e.g. applicant data, conflict tracking)
+    return permits.map(permit => ({
+      _id: permit._id,
+      permitNumber: permit.permitNumber,
+      department: permit.department ? {
+        _id: permit.department._id,
+        name: permit.department.name,
+        code: permit.department.code,
+        color: permit.department.color
+      } : null,
+      roadName: permit.roadName,
+      ward: permit.ward ? {
+        _id: permit.ward._id,
+        name: permit.ward.name,
+        number: permit.ward.number
+      } : null,
+      location: permit.location,
+      path: permit.path,
+      radius: permit.radius,
+      purpose: permit.purpose,
+      startDate: permit.startDate,
+      endDate: permit.endDate,
+      status: permit.status
+    }));
+  }
+
+  return permits;
+};
+
 // @desc    Get all permits (with search, filtering, sorting, pagination)
 // @route   GET /api/permits
 // @access  Private
 export const getPermits = async (req, res, next) => {
   try {
-    const filters = {};
+    const roleName = req.user?.role && typeof req.user.role === 'object' ? req.user.role.name : req.user?.role;
+    const isCitizen = roleName === 'Citizen';
+    const isPublicQuery = req.query.public === 'true' || isCitizen;
 
-    // Filtration matches
-    if (req.query.ward) filters.ward = req.query.ward;
-    if (req.query.department) filters.department = req.query.department;
-    if (req.query.status) filters.status = req.query.status;
-
-    // Search query
-    if (req.query.search) {
-      filters.roadName = { $regex: req.query.search, $options: 'i' };
-    }
-
-    // Date range overlap check
-    if (req.query.startDate || req.query.endDate) {
-      const dateSubQuery = {};
-      if (req.query.startDate) dateSubQuery.$gte = new Date(req.query.startDate);
-      if (req.query.endDate) dateSubQuery.$lte = new Date(req.query.endDate);
-      filters.startDate = dateSubQuery;
-    }
-
-    // Sort order
-    let sort = '-createdAt';
-    if (req.query.sort) {
-      sort = req.query.sort.split(',').join(' ');
-    }
-
-    const permits = await PermitRepository.findWithDetails(filters, sort);
+    const permits = await getFilteredPermits(req.query, isPublicQuery);
 
     res.status(200).json({
       success: true,
@@ -232,6 +278,72 @@ export const updatePermitStatus = async (req, res, next) => {
         recipientDepartment: permit.department._id,
         title: 'Permit Status Updated',
         message: `Your permit request ${permit.permitNumber} on ${permit.roadName} was updated to ${status}.`,
+        type: 'PermitStatus',
+        metadata: { permitId: permit._id },
+      });
+
+      io.to(`dept_${permit.department._id.toString()}`).emit('notification', notification);
+      io.emit('permit_updated', permit);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: permit,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Approve or reject a pending permit request (Nodal Admin only)
+// @route   PATCH /api/permits/:id/status
+// @access  Private (Super Admin Only)
+export const approveOrRejectPermit = async (req, res, next) => {
+  try {
+    const { status, remarks } = req.body;
+
+    if (!['Approved', 'Rejected'].includes(status)) {
+      return next(new AppError('Status must be Approved or Rejected', 400, 'BAD_REQUEST'));
+    }
+
+    const permit = await PermitRepository.findByIdWithDetails(req.params.id);
+    if (!permit) {
+      return next(new AppError(`Permit not found with id of ${req.params.id}`, 404, 'PERMIT_NOT_FOUND'));
+    }
+
+    if (permit.status !== 'Pending') {
+      return next(new AppError('Only pending permits can be approved or rejected', 400, 'BAD_REQUEST'));
+    }
+
+    const previousStatus = permit.status;
+    permit.status = status;
+    await permit.save();
+
+    // Log timeline event
+    await PermitTimeline.create({
+      permit: permit._id,
+      actor: req.user._id,
+      previousStatus,
+      newStatus: status,
+      actionPerformed: status === 'Approved' ? 'APPROVED' : 'REJECTED',
+      remarks: remarks || `Permit request was ${status.toLowerCase()} by Nodal Officer.`
+    });
+
+    // Track activity
+    await ActivityLogRepository.log(
+      req.user._id,
+      'APPROVE_REJECT_PERMIT',
+      `Admin ${status.toLowerCase()} permit request '${permit.permitNumber}'`,
+      req.ip
+    );
+
+    // Notify via Socket.io
+    const io = getIO();
+    if (io) {
+      const notification = await NotificationRepository.create({
+        recipientDepartment: permit.department._id,
+        title: `Permit ${status}`,
+        message: `Your permit request ${permit.permitNumber} on ${permit.roadName} has been ${status.toLowerCase()} by the Nodal Admin.`,
         type: 'PermitStatus',
         metadata: { permitId: permit._id },
       });

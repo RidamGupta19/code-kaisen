@@ -3,8 +3,29 @@ import { body } from 'express-validator';
 export const createPermitRules = [
   body('roadName').trim().notEmpty().withMessage('Road name is required'),
   body('ward').notEmpty().withMessage('Ward is required').isMongoId().withMessage('Invalid ward ID format'),
-  body('longitude').isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180'),
-  body('latitude').isFloat({ min: -90, max: 90 }).withMessage('Latitude must be between -90 and 90'),
+  body('path')
+    .notEmpty().withMessage('Path is required')
+    .custom((value) => {
+      if (typeof value !== 'object' || value.type !== 'LineString') {
+        throw new Error('Path must be a GeoJSON LineString object');
+      }
+      if (!Array.isArray(value.coordinates) || value.coordinates.length < 2) {
+        throw new Error('Path must contain at least 2 coordinates');
+      }
+      for (const coord of value.coordinates) {
+        if (!Array.isArray(coord) || coord.length !== 2) {
+          throw new Error('Each coordinate must be a [longitude, latitude] pair');
+        }
+        const [lng, lat] = coord;
+        if (typeof lng !== 'number' || lng < -180 || lng > 180) {
+          throw new Error('Longitude must be between -180 and 180');
+        }
+        if (typeof lat !== 'number' || lat < -90 || lat > 90) {
+          throw new Error('Latitude must be between -90 and 90');
+        }
+      }
+      return true;
+    }),
   body('radius').isInt({ min: 10, max: 1000 }).withMessage('Radius must be between 10 and 1000 meters'),
   body('purpose').trim().notEmpty().withMessage('Purpose of digging is required').isLength({ min: 10 }).withMessage('Purpose description must be at least 10 characters'),
   body('startDate').isISO8601().toDate().withMessage('Invalid start date format'),

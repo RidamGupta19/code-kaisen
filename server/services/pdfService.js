@@ -92,12 +92,12 @@ export const generatePermitPDF = (permit, res) => {
     currentY += 25;
   };
 
-  writeGridRow('Department:', permit.department?.name || 'N/A', 'Ward No:', permit.ward);
+  writeGridRow('Department:', permit.department?.name || 'N/A', 'Ward No:', permit.ward?.name || permit.ward || 'N/A');
   writeGridRow('Road Name:', permit.roadName, 'Depth (m):', `${permit.depth} m`);
-  writeGridRow('Latitude:', `${permit.latitude}`, 'Longitude:', `${permit.longitude}`);
+  writeGridRow('Latitude:', permit.location?.coordinates[1] ? String(permit.location.coordinates[1]) : 'N/A', 'Longitude:', permit.location?.coordinates[0] ? String(permit.location.coordinates[0]) : 'N/A');
   writeGridRow('Start Date:', new Date(permit.startDate).toLocaleDateString(), 'End Date:', new Date(permit.endDate).toLocaleDateString());
-  writeGridRow('Radius:', `${permit.radius} m`, 'Applicant:', permit.applicantName);
-  writeGridRow('Phone:', permit.applicantPhone, 'Joint Excavation:', permit.isJointExcavationSuggested ? 'Suggested' : 'No');
+  writeGridRow('Radius:', `${permit.radius} m`, 'Applicant:', permit.applicant?.name || 'N/A');
+  writeGridRow('Phone:', permit.applicant?.phone || 'N/A', 'Joint Excavation:', permit.isJointExcavationSuggested ? 'Suggested' : 'No');
 
   doc.y = currentY + 10;
 
@@ -137,20 +137,40 @@ export const generatePermitPDF = (permit, res) => {
   // Signature lines
   const sigY = doc.y;
   doc
-    .moveTo(70, sigY)
+    .moveTo(50, sigY)
     .lineTo(200, sigY)
+    .strokeColor(borderLight)
     .stroke();
   doc
-    .moveTo(350, sigY)
-    .lineTo(480, sigY)
+    .moveTo(395, sigY)
+    .lineTo(545, sigY)
+    .strokeColor(borderLight)
     .stroke();
 
   doc
     .fontSize(10)
     .font('Helvetica-Bold')
     .fillColor(textColor)
-    .text('Nodal Officer Signature', 70, sigY + 5)
-    .text('Department Authority Signature', 350, sigY + 5);
+    .text('Nodal Officer Signature', 50, sigY + 5)
+    .text('Department Authority Signature', 395, sigY + 5);
+
+  // Department Seal Placeholder
+  doc
+    .rect(257, sigY - 30, 80, 80)
+    .dash(5, { space: 5 })
+    .strokeColor(borderLight)
+    .lineWidth(1)
+    .stroke();
+
+  doc
+    .fontSize(8)
+    .font('Helvetica-Bold')
+    .fillColor('#64748b')
+    .text('OFFICIAL SEAL', 257, sigY - 10, { width: 80, align: 'center' })
+    .text('PLACEHOLDER', 257, sigY, { width: 80, align: 'center' });
+
+  // Reset dash pattern
+  doc.undash();
 
   // Finalize PDF
   doc.end();

@@ -11,6 +11,10 @@ const permitSchema = new mongoose.Schema({
     type: { type: String, enum: ['Point'], required: true, default: 'Point' },
     coordinates: { type: [Number], required: true } // [longitude, latitude]
   },
+  path: {
+    type: { type: String, enum: ['LineString'], required: true, default: 'LineString' },
+    coordinates: { type: [[Number]], required: true } // Array of [longitude, latitude] pairs
+  },
   radius: { type: Number, required: true, min: 10, max: 1000 }, // Affected spatial zone in meters
   purpose: { type: String, required: true, minlength: 10 },
   startDate: { type: Date, required: true },
