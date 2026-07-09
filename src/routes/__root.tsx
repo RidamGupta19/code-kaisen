@@ -77,14 +77,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "SahayogBhopal — Unified Civic Coordination for Bhopal" },
+      {
+        name: "description",
+        content:
+          "Live map of Bhopal's roadworks, pollution and citizen reports. One platform for citizens, PWD, BMC, Traffic and Pollution Board.",
+      },
+      { name: "author", content: "SahayogBhopal" },
+      { property: "og:title", content: "SahayogBhopal — Unified Civic Coordination" },
+      {
+        property: "og:description",
+        content:
+          "Report potholes, track pollution, prevent inter-department clashes on Bhopal's streets — in one place.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
