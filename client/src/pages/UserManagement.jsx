@@ -14,6 +14,16 @@ const UserManagement = () => {
   const [editDept, setEditDept] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
 
+  // Creation states
+  const [createName, setCreateName] = useState('');
+  const [createEmail, setCreateEmail] = useState('');
+  const [createPassword, setCreatePassword] = useState('');
+  const [createPhone, setCreatePhone] = useState('');
+  const [createRole, setCreateRole] = useState('Department Officer');
+  const [createDept, setCreateDept] = useState('');
+  const [createWard, setCreateWard] = useState('');
+  const [createLoading, setCreateLoading] = useState(false);
+
   const fetchUsers = async () => {
     try {
       const res = await axios.get('/api/admin/users');
@@ -84,11 +94,164 @@ const UserManagement = () => {
     }
   };
 
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    if (!createName || !createEmail || !createPassword || !createPhone) {
+      toast.error('Please fill in all required fields.');
+      return;
+    }
+    if (createRole === 'Department Officer' && !createDept) {
+      toast.error('Please select a department for the officer.');
+      return;
+    }
+    if (createRole === 'Citizen' && !createWard) {
+      toast.error('Please select a ward for the citizen.');
+      return;
+    }
+    setCreateLoading(true);
+    try {
+      const res = await axios.post('/api/admin/users', {
+        name: createName,
+        email: createEmail,
+        password: createPassword,
+        phone: createPhone,
+        role: createRole,
+        department: createRole === 'Department Officer' ? createDept : undefined,
+        ward: createRole === 'Citizen' ? createWard : undefined
+      });
+      if (res.data.success) {
+        toast.success('Account created successfully.');
+        setCreateName('');
+        setCreateEmail('');
+        setCreatePassword('');
+        setCreatePhone('');
+        setCreateDept('');
+        setCreateWard('');
+        fetchUsers();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to create user account.');
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-extrabold text-white tracking-tight">System User Management</h2>
         <p className="text-xs text-slate-400 mt-1">Supervise user registrations, adjust department officer access, and audit accounts</p>
+      </div>
+
+      {/* Create New User Panel */}
+      <div className="glass-panel p-5 rounded-2xl border border-slate-850">
+        <h3 className="font-bold text-sm text-slate-200 border-b border-slate-850 pb-3 mb-4 flex items-center gap-2">
+          <Shield className="h-4.5 w-4.5 text-gov-400" />
+          Create System Account
+        </h3>
+        <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+          <div className="space-y-1">
+            <label className="text-slate-400 font-semibold">Full Name</label>
+            <input
+              type="text"
+              className="w-full bg-slate-950 border border-slate-850 rounded px-3 py-2 text-slate-200 outline-none focus:border-gov-500"
+              placeholder="e.g. Amit Patel"
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-slate-400 font-semibold">Email Address</label>
+            <input
+              type="email"
+              className="w-full bg-slate-950 border border-slate-850 rounded px-3 py-2 text-slate-200 outline-none focus:border-gov-500 font-mono"
+              placeholder="e.g. amit@setu.gov.in"
+              value={createEmail}
+              onChange={(e) => setCreateEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-slate-400 font-semibold">Password</label>
+            <input
+              type="password"
+              className="w-full bg-slate-950 border border-slate-850 rounded px-3 py-2 text-slate-200 outline-none focus:border-gov-500"
+              placeholder="Min. 6 characters"
+              value={createPassword}
+              onChange={(e) => setCreatePassword(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-slate-400 font-semibold">Contact Phone</label>
+            <input
+              type="text"
+              className="w-full bg-slate-950 border border-slate-850 rounded px-3 py-2 text-slate-200 outline-none focus:border-gov-500"
+              placeholder="e.g. 9888888889"
+              value={createPhone}
+              onChange={(e) => setCreatePhone(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-slate-400 font-semibold">Account Role</label>
+            <select
+              className="w-full bg-slate-950 border border-slate-850 rounded px-3 py-2 text-slate-200 outline-none focus:border-gov-500"
+              value={createRole}
+              onChange={(e) => setCreateRole(e.target.value)}
+            >
+              <option value="Department Officer">Department Officer</option>
+              <option value="Super Admin">Super Nodal Admin</option>
+              <option value="Citizen">Citizen</option>
+            </select>
+          </div>
+
+          {createRole === 'Department Officer' && (
+            <div className="space-y-1">
+              <label className="text-slate-400 font-semibold">Assigned Utility Department</label>
+              <select
+                className="w-full bg-slate-950 border border-slate-850 rounded px-3 py-2 text-slate-200 outline-none focus:border-gov-500"
+                value={createDept}
+                onChange={(e) => setCreateDept(e.target.value)}
+                required
+              >
+                <option value="">Select Department</option>
+                {departments.map((d) => (
+                  <option key={d._id} value={d._id}>{d.name} ({d.code})</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {createRole === 'Citizen' && (
+            <div className="space-y-1">
+              <label className="text-slate-400 font-semibold">Resident Ward</label>
+              <select
+                className="w-full bg-slate-950 border border-slate-850 rounded px-3 py-2 text-slate-200 outline-none focus:border-gov-500"
+                value={createWard}
+                onChange={(e) => setCreateWard(e.target.value)}
+                required
+              >
+                <option value="">Select Ward</option>
+                <option value="Ward 12 (TT Nagar)">Ward 12 (TT Nagar)</option>
+                <option value="Ward 45 (MP Nagar)">Ward 45 (MP Nagar)</option>
+                <option value="Ward 52 (Habibganj)">Ward 52 (Habibganj)</option>
+                <option value="Ward 80 (Kolar)">Ward 80 (Kolar)</option>
+              </select>
+            </div>
+          )}
+
+          <div className="md:col-span-2 lg:col-span-4 flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={createLoading}
+              className="px-6 py-2 bg-gov-600 text-slate-950 rounded-xl font-bold hover:bg-gov-500 disabled:opacity-50 transition"
+            >
+              {createLoading ? 'Creating...' : 'Create Account'}
+            </button>
+          </div>
+        </form>
       </div>
 
       <div className="glass-panel p-5 rounded-2xl border border-slate-850">

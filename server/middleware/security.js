@@ -30,6 +30,21 @@ export const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Strict Authentication Rate Limiter: Max 5 attempts per 15 minutes per IP
+export const strictAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: {
+    success: false,
+    error: {
+      code: 'AUTH_RATE_LIMIT_EXCEEDED',
+      message: 'Too many authentication attempts. Please try again after 15 minutes.'
+    }
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Custom XSS Sanitizer: strips HTML elements and script tags recursively
 export const xssSanitizer = (req, res, next) => {
   const sanitize = (data) => {

@@ -105,64 +105,24 @@ const Register = () => {
           {errors.phone && <span className="text-[10px] text-rose-400">{errors.phone.message}</span>}
         </div>
 
-        {/* Role Picker */}
+        {/* Residential Ward (Required for Citizens) */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-300">Account Role</label>
+          <label className="text-xs font-semibold text-slate-300">Residential Ward</label>
           <div className="relative">
+            <MapPin className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
             <select
-              className="w-full bg-slate-900/60 border border-slate-700/60 rounded-xl px-4 py-2.5 text-sm text-slate-200 outline-none focus:border-gov-500"
-              {...register('role')}
+              className="w-full bg-slate-900/60 border border-slate-700/60 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 outline-none focus:border-gov-500"
+              {...register('ward', { required: 'Ward is required' })}
             >
-              <option value="Citizen">Citizen User</option>
-              <option value="Department Officer">Department Officer</option>
+              <option value="">Select Resident Ward</option>
+              <option value="Ward 12 (TT Nagar)">Ward 12 (TT Nagar)</option>
+              <option value="Ward 45 (MP Nagar)">Ward 45 (MP Nagar)</option>
+              <option value="Ward 52 (Habibganj)">Ward 52 (Habibganj)</option>
+              <option value="Ward 80 (Kolar)">Ward 80 (Kolar)</option>
             </select>
           </div>
+          {errors.ward && <span className="text-[10px] text-rose-400">{errors.ward.message}</span>}
         </div>
-
-        {/* Conditional Ward Field for Citizens */}
-        {selectedRole === 'Citizen' && (
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Residential Ward</label>
-            <div className="relative">
-              <MapPin className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
-              <select
-                className="w-full bg-slate-900/60 border border-slate-700/60 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 outline-none focus:border-gov-500"
-                {...register('ward', { required: 'Ward is required for citizens' })}
-              >
-                <option value="">Select Resident Ward</option>
-                <option value="Ward 12 (TT Nagar)">Ward 12 (TT Nagar)</option>
-                <option value="Ward 45 (MP Nagar)">Ward 45 (MP Nagar)</option>
-                <option value="Ward 52 (Habibganj)">Ward 52 (Habibganj)</option>
-                <option value="Ward 80 (Kolar)">Ward 80 (Kolar)</option>
-              </select>
-            </div>
-            {errors.ward && <span className="text-[10px] text-rose-400">{errors.ward.message}</span>}
-          </div>
-        )}
-
-        {/* Conditional Department Selection for Officers */}
-        {selectedRole === 'Department Officer' && (
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Assigned Department Code</label>
-            <div className="relative">
-              <Building className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
-              <select
-                className="w-full bg-slate-900/60 border border-slate-700/60 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 outline-none focus:border-gov-500"
-                {...register('departmentCode', { required: 'Department is required for officers' })}
-              >
-                <option value="">Select Utility Department</option>
-                {departments.map((d) => (
-                  <option key={d.code} value={d.code}>
-                    {d.name} ({d.code})
-                  </option>
-                ))}
-              </select>
-            </div>
-            {errors.departmentCode && (
-              <span className="text-[10px] text-rose-400">{errors.departmentCode.message}</span>
-            )}
-          </div>
-        )}
 
         {/* Password */}
         <div className="space-y-1.5">

@@ -41,9 +41,15 @@ const errorHandler = (err, req, res, next) => {
     error = new AppError('Invalid authentication token. Please login again.', 401, 'INVALID_TOKEN');
   }
 
+  // Hardening: do not leak raw 500 error messages or details in production
+  let responseMessage = error.message;
+  if (error.statusCode === 500 && process.env.NODE_ENV === 'production') {
+    responseMessage = 'An unexpected error occurred on the server. Please contact support.';
+  }
+
   res.status(error.statusCode).json({
     success: false,
-    message: error.message,
+    message: responseMessage,
     errors: error.details || []
   });
 };

@@ -12,6 +12,7 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
+import Forbidden from './pages/Forbidden';
 
 // GIS Map Page
 import GISMap from './pages/GISMap';
@@ -52,7 +53,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
 
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/403" replace />;
   }
 
   return children;
@@ -63,15 +64,15 @@ const RoleDashboardDispatch = () => {
   const { user } = useAuth();
 
   if (user?.role === 'Citizen') {
-    return <CitizenDashboard />;
+    return <Navigate to="/citizen-dashboard" replace />;
   }
   if (user?.role === 'Department Officer') {
-    return <DepartmentDashboard />;
+    return <Navigate to="/dept-dashboard" replace />;
   }
   if (user?.role === 'Super Admin') {
-    return <AdminDashboard />;
+    return <Navigate to="/admin-dashboard" replace />;
   }
-  return null;
+  return <Navigate to="/login" replace />;
 };
 
 const App = () => {
@@ -128,6 +129,40 @@ const App = () => {
           <ProtectedRoute>
             <DashboardLayout>
               <Profile />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      {/* 403 Forbidden Page */}
+      <Route path="/403" element={<Forbidden />} />
+
+      {/* Role Dashboards */}
+      <Route
+        path="/citizen-dashboard"
+        element={
+          <ProtectedRoute allowedRoles={['Citizen']}>
+            <DashboardLayout>
+              <CitizenDashboard />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dept-dashboard"
+        element={
+          <ProtectedRoute allowedRoles={['Department Officer']}>
+            <DashboardLayout>
+              <DepartmentDashboard />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin-dashboard"
+        element={
+          <ProtectedRoute allowedRoles={['Super Admin']}>
+            <DashboardLayout>
+              <AdminDashboard />
             </DashboardLayout>
           </ProtectedRoute>
         }

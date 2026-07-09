@@ -4,6 +4,7 @@ import DepartmentRepository from '../repositories/DepartmentRepository.js';
 import PermitRepository from '../repositories/PermitRepository.js';
 import ActivityLogRepository from '../repositories/ActivityLogRepository.js';
 import NotificationRepository from '../repositories/NotificationRepository.js';
+import WardRepository from '../repositories/WardRepository.js';
 import AppError from '../utils/appError.js';
 import { toUserDTO } from '../dto/UserDTO.js';
 import { getIO } from '../sockets/socketHandler.js';
@@ -17,6 +18,86 @@ export const getUsers = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: users.map(user => toUserDTO(user)),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Create a new user (Admin only)
+// @route   POST /api/admin/users
+// @access  Private (Super Admin)
+export const createUser = async (req, res, next) => {
+  try {
+    const { name, email, password, role, phone, department, ward } = req.body;
+
+    // Check if user already exists
+    const existingUser = await UserRepository.findByEmail(email);
+    if (existingUser) {
+      return next(new AppError('User already registered with this email', 400, 'USER_EXISTS'));
+    }
+
+    // Resolve Role ID
+    const roleDoc = await RoleRepository.findByName(role);
+    if (!roleDoc) {
+      return next(new AppError(`Specified role '${role}' is not configured in system`, 404, 'ROLE_NOT_FOUND'));
+    }
+
+    let deptId = null;
+    if (role === 'Department Officer') {
+      if (!department) {
+        return next(new AppError('Department is required for Department Officers', 400, 'BAD_REQUEST'));
+      }
+      const dept = await DepartmentRepository.findById(department);
+      if (!dept) {
+        return next(new AppError('Department not found', 404, 'DEPARTMENT_NOT_FOUND'));
+      }
+      deptId = dept._id;
+    }
+
+    let wardId = null;
+    if (role === 'Citizen') {
+      if (!ward) {
+        return next(new AppError('Ward is required for Citizens', 400, 'BAD_REQUEST'));
+      }
+      let wardDoc;
+      const isMongoId = /^[0-9a-fA-F]{24}$/.test(ward);
+      if (isMongoId) {
+        wardDoc = await WardRepository.findById(ward);
+      } else {
+        wardDoc = await WardRepository.findOne({ name: ward });
+      }
+      if (!wardDoc) {
+        return next(new AppError(`Ward '${ward}' not found`, 404, 'WARD_NOT_FOUND'));
+      }
+      wardId = wardDoc._id;
+    }
+
+    // Create user
+    const user = await UserRepository.create({
+      name,
+      email,
+      password,
+      role: roleDoc._id,
+      phone,
+      ward: role === 'Citizen' ? wardId : undefined,
+      department: deptId,
+      isVerified: true
+    });
+
+    const populatedUser = await UserRepository.findByIdWithDetails(user._id);
+
+    // Track admin activity
+    await ActivityLogRepository.log(
+      req.user._id,
+      'ADMIN_CREATE_USER',
+      `Admin created user account: ${populatedUser.email} (role: ${roleDoc.name})`,
+      req.ip
+    );
+
+    res.status(201).json({
+      success: true,
+      data: toUserDTO(populatedUser)
     });
   } catch (error) {
     next(error);
