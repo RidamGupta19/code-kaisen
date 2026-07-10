@@ -8,8 +8,6 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { BrainCircuit, X, RefreshCw, Link as LinkIcon, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { toast } from "sonner";
-import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({
