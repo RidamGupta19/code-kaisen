@@ -51,6 +51,21 @@ async function seedHackathon() {
       });
     }
 
+    console.log('Ensuring department admins exist...');
+    for (const dept of depts) {
+      const adminEmail = dept.name.toLowerCase().replace(' ', '') + '_admin@bhopal.gov.in';
+      const exists = await User.findOne({ email: adminEmail });
+      if (!exists) {
+        await User.create({
+          email: adminEmail,
+          password: 'password123',
+          fullName: dept.name + ' Admin',
+          role: 'dept_admin',
+          department: dept._id
+        });
+      }
+    }
+
     console.log('Seeding Bhopal citizen reports...');
 
     const sampleIssues = [
